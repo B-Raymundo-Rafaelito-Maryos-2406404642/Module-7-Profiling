@@ -7,13 +7,9 @@ import com.advpro.profiling.tutorial.repository.StudentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * @author muhammad.khadafi
- */
 @Service
 public class StudentService {
 
@@ -24,40 +20,22 @@ public class StudentService {
     private StudentCourseRepository studentCourseRepository;
 
     public List<StudentCourse> getAllStudentsWithCourses() {
-        List<Student> students = studentRepository.findAll();
-        List<StudentCourse> studentCourses = new ArrayList<>();
-        for (Student student : students) {
-            List<StudentCourse> studentCoursesByStudent = studentCourseRepository.findByStudentId(student.getId());
-            for (StudentCourse studentCourseByStudent : studentCoursesByStudent) {
-                StudentCourse studentCourse = new StudentCourse();
-                studentCourse.setStudent(student);
-                studentCourse.setCourse(studentCourseByStudent.getCourse());
-                studentCourses.add(studentCourse);
-            }
-        }
-        return studentCourses;
+        // Use single query with JOIN FETCH to avoid N+1 queries and let JPA fetch student and course together
+        return studentCourseRepository.findAllWithStudentAndCourse();
     }
 
     public Optional<Student> findStudentWithHighestGpa() {
-        List<Student> students = studentRepository.findAll();
-        Student highestGpaStudent = null;
-        double highestGpa = 0.0;
-        for (Student student : students) {
-            if (student.getGpa() > highestGpa) {
-                highestGpa = student.getGpa();
-                highestGpaStudent = student;
-            }
-        }
-        return Optional.ofNullable(highestGpaStudent);
+        // Delegate to repository to let the database find the top GPA student
+        return studentRepository.findTopByOrderByGpaDesc();
     }
 
     public String joinStudentNames() {
-        List<Student> students = studentRepository.findAll();
-        String result = "";
-        for (Student student : students) {
-            result += student.getName() + ", ";
+        // Fetch only names from DB and join using String.join to avoid repeated string concatenation
+        List<String> names = studentRepository.findAllNames();
+        if (names == null || names.isEmpty()) {
+            return "";
         }
-        return result.substring(0, result.length() - 2);
+        return String.join(", ", names);
     }
 }
 
